@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -70,19 +72,17 @@ public class Downloader implements Runnable {
     public void run() {
         retrieveFiles();
 
-        int count = 0;
-        for (URL fileUrl : files) {
-            //downloadUrl(fileUrl);
-
-            DownloaderTask downloaderTask = new DownloaderTask(this, store, fileUrl);
-            Thread thread = new Thread(downloaderTask);
-            thread.start();
-
-            count++;
-            if (count > 5) {
-                return;
-            }
+        
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+        int filesCount = Math.min(files.size(), 10);
+        for (int i = 0; i < filesCount; i++) {
+            Runnable downloaderTask = new DownloaderTask(this, store, files.get(i));
+            executor.execute(downloaderTask);
         }
+        executor.shutdown();
+        while (!executor.isTerminated()) {};
+        System.out.println("Finished all threads...");
+        
     }
 
     private void retrieveFiles() {
