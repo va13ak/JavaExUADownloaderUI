@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
@@ -30,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -47,6 +47,8 @@ public class Downloader {
     private final File store;
     private int bufferSize = 524288;
 
+    private List<DownloaderListener> listeners;
+
     public Downloader(URL fileList, File store) {
         this.fileList = fileList;
 
@@ -60,8 +62,18 @@ public class Downloader {
         } else {
             this.store = store;
         }
-        
+
         this.files = new ArrayList<>();
+
+        this.listeners = Collections.synchronizedList(new ArrayList<DownloaderListener>());
+    }
+
+    public boolean add(DownloaderListener listener) {
+        return listeners.add(listener);
+    }
+
+    public boolean remove(Object listener) {
+        return listeners.remove(listener);
     }
 
     public void download() {
@@ -104,8 +116,8 @@ public class Downloader {
             String filename = new String(sourcefile.getBytes("ISO-8859-1"), "UTF-8");
             File targetFile = new File(store, URLDecoder.decode(filename, "UTF-8"));
 
-            System.out.printf("--%s--   %s\n", dateFormat.format(new Date()), sourceUrl);
-            System.out.printf("Length: %d   Saving to: '%s'\n", total, targetFile);
+//            System.out.printf("--%s--   %s\n", dateFormat.format(new Date()), sourceUrl);
+//            System.out.printf("Length: %d   Saving to: '%s'\n", total, targetFile);
 
             int progressLength = 60;
             String progressLine = String.format("%-" + progressLength + "s", "").replace(' ', '=');
@@ -142,38 +154,43 @@ public class Downloader {
 
                     downloaded += read;
 
-                    if (read > 0) {
-                        int curLength = (int) ((progressLength * downloaded) / total);
-                        String progress = progressLine.substring(0, curLength) + (curLength < progressLength ? ">" : "");
-                        //System.out.printf("\r[%-" + progressLength + "s] %6.02f%%", progress, (double) downloaded * 100. / total);
-                        System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progress, downloaded, speed, (1. * (System.currentTimeMillis() - startTime) / 1000));
-                    }
-                    if (downloaded == total) {
-                        System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progressLine, downloaded, (int) (downloaded / totalReadTime), (1. * (System.currentTimeMillis() - startTime) / 1000));
-                    }
+//                    if (read > 0) {
+//                        int curLength = (int) ((progressLength * downloaded) / total);
+//                        String progress = progressLine.substring(0, curLength) + (curLength < progressLength ? ">" : "");
+//                        //System.out.printf("\r[%-" + progressLength + "s] %6.02f%%", progress, (double) downloaded * 100. / total);
+//                        System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progress, downloaded, speed, (1. * (System.currentTimeMillis() - startTime) / 1000));
+//                    }
+//                    if (downloaded == total) {
+//                        System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progressLine, downloaded, (int) (downloaded / totalReadTime), (1. * (System.currentTimeMillis() - startTime) / 1000));
+//                    }
                     prevTime = System.currentTimeMillis();
                 }
 
-                System.out.println();
+//                System.out.println();
 
             }
 
-            StringBuffer sb = new StringBuffer();
-            if (md != null) {
-                byte[] mdbytes = md.digest();
-
-                //convert the byte to hex format
-                for (int i = 0; i < mdbytes.length; i++) {
-                    sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
-                }
-            } else {
-                sb.append("UNKNOWN");
+            
+            for (DownloaderListener listener : listeners) {
+                listener.downloadComplete(sourceUrl, targetFile);
             }
             
-            System.out.printf("%s - saved [%d/%d] MD5: %s\n", 
-                    dateFormat.format(new Date()), downloaded, total, sb.toString());
+//            StringBuffer sb = new StringBuffer();
+//            if (md != null) {
+//                byte[] mdbytes = md.digest();
+//
+//                //convert the byte to hex format
+//                for (int i = 0; i < mdbytes.length; i++) {
+//                    sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+//                }
+//            } else {
+//                sb.append("UNKNOWN");
+//            }
+
+//            System.out.printf("%s - saved [%d/%d] MD5: %s\n",
+//                    dateFormat.format(new Date()), downloaded, total, sb.toString());
             //System.out.println("Downloaded: " + targetFile);
-            System.out.println();
+//            System.out.println();
         } catch (MalformedURLException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {

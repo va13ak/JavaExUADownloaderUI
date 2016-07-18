@@ -33,22 +33,23 @@ public class Main {
      */
     public static void main(String[] args) {
         File store = new File("store");
-        
+
         if (!store.exists()) {
             store.mkdir();
         }
-        
+
         String resource;
-        
+
         if (args.length > 0) {
             resource = args[0];
             System.out.println("Download: " + resource);
         } else {
             resource = "http://www.ex.ua/playlist/2301371.m3u";
         }
-        
+
         try {
             Downloader downloader = new Downloader(new URL(resource), store);
+            downloader.add(new DownloadHandler());
             downloader.download();
         } catch (MalformedURLException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
