@@ -5,14 +5,16 @@
  */
 package javaexuadownloader;
 
-import java.io.File;
-import java.net.URL;
-
 /**
  *
  * @author Valery
  */
 public interface DownloaderListener {
 
-    public void downloadComplete(URL source, File target);
+    public void downloadBegin(DownloaderTask task);
+
+    public void downloadProgress(DownloaderTask task);
+
+    public void downloadComplete(DownloaderTask task);
+
 }

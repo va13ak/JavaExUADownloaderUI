@@ -5,9 +5,6 @@
  */
 package javaexuadownloader;
 
-import java.io.File;
-import java.net.URL;
-
 /**
  *
  * @author Valery
@@ -15,8 +12,17 @@ import java.net.URL;
 public class DownloadHandler implements DownloaderListener {
 
     @Override
-    public void downloadComplete(URL source, File target) {
-        System.out.printf("File downloaded:\n %s\n %s\n\n", source, target);
+    public void downloadBegin(DownloaderTask task) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    @Override
+    public void downloadProgress(DownloaderTask task) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void downloadComplete(DownloaderTask task) {
+        System.out.printf("File downloaded:\n %s\n %s\n\n", task.getSource(), task.getTarget());
+    }
 }
