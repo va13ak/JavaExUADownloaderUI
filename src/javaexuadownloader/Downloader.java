@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  *
  * @author CodeFireUA <edu@codefire.com.ua>
  */
-public class Downloader {
+public class Downloader implements Runnable {
 
     private final URL fileList;
     private final List<URL> files;
@@ -76,7 +76,8 @@ public class Downloader {
         return listeners.remove(listener);
     }
 
-    public void download() {
+    @Override
+    public void run() {
         retrieveFiles();
 //        int count = 0;
         for (URL fileUrl : files) {
