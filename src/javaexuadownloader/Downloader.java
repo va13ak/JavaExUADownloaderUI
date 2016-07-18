@@ -196,13 +196,13 @@ public class Downloader implements Runnable {
 
     public void downloadBegin(DownloaderTask task) {
         for (DownloaderListener listener : listeners) {
-            listener.downloadComplete(task);
+            listener.downloadBegin(task);
         }
     }
 
     public void downloadProgress(DownloaderTask task) {
         for (DownloaderListener listener : listeners) {
-            listener.downloadComplete(task);
+            listener.downloadProgress(task);
         }
     }
 
