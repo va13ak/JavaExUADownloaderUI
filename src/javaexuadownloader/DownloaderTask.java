@@ -31,6 +31,12 @@ public class DownloaderTask implements Runnable {
     private int bufferSize = 524288;
     private long downloaded;
     private long total;
+    private long streamReadingTime = 0;
+    private long currentBlockReadingTime = 0;
+    private long totalDownloadingTime = 0;
+    private int bytesRead;
+    private MessageDigest messageDigest5;
+    
 
     public DownloaderTask(Downloader downloader, File store, URL source) {
         this.downloader = downloader;
@@ -53,6 +59,31 @@ public class DownloaderTask implements Runnable {
     public long getDownloaded() {
         return downloaded;
     }
+    
+    public long getSpeed() {
+        return downloaded / streamReadingTime;
+    }
+    
+    public long getVelocity() {
+        return bytesRead / currentBlockReadingTime;
+    }
+    
+    public String getMD5() {
+        StringBuilder sb = new StringBuilder();
+        
+        if (messageDigest5 != null) {
+            byte[] mdbytes = messageDigest5.digest();
+
+            //convert the byte to hex format
+            for (int i = 0; i < mdbytes.length; i++) {
+                sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+            }
+        } else {
+            sb.append("UNKNOWN");
+        }
+        
+        return sb.toString();
+    }
 
     @Override
     public void run() {
@@ -70,12 +101,11 @@ public class DownloaderTask implements Runnable {
 
             downloader.downloadBegin(this);
 
-            MessageDigest md;
             try {
-                md = MessageDigest.getInstance("md5");
+                messageDigest5 = MessageDigest.getInstance("md5");
             } catch (NoSuchAlgorithmException ex) {
                 Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
-                md = null;
+                messageDigest5 = null;
             }
 
             try (BufferedInputStream bis = new BufferedInputStream(targetUrl.openStream());
@@ -83,17 +113,28 @@ public class DownloaderTask implements Runnable {
 
                 byte[] buffer = new byte[bufferSize];
 
-                for (int read; (read = bis.read(buffer)) >= 0;) {
-
-                    fos.write(buffer, 0, read);
-                    fos.flush();
-                    if (md != null) {
-                        md.update(buffer, 0, read);
+                while (true) {
+                    
+                    synchronized (this) {
+                        long startTimeBlockReading = System.currentTimeMillis();
+                        bytesRead = bis.read(buffer);
+                        currentBlockReadingTime = System.currentTimeMillis() - startTimeBlockReading;
+                        streamReadingTime += currentBlockReadingTime;
+                    }
+                    
+                    if (bytesRead < 0) {
+                        break;
                     }
 
-                    downloaded += read;
+                    fos.write(buffer, 0, bytesRead);
+                    fos.flush();
+                    if (messageDigest5 != null) {
+                        messageDigest5.update(buffer, 0, bytesRead);
+                    }
 
-                    if (read > 0) {
+                    downloaded += bytesRead;
+
+                    if (bytesRead > 0) {
                         downloader.downloadProgress(this);
                     }
                 }

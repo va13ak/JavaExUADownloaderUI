@@ -18,8 +18,8 @@ public class DownloadHandler implements DownloaderListener {
 
     @Override
     public void downloadProgress(DownloaderTask task) {
-        System.out.printf("%3d%% of %s to '%s' downloaded [%d/%d]\n\n", task.getDownloaded() * 100 / task.getTotal(), 
-                        task.getSource(), task.getTarget(), task.getDownloaded(), task.getTotal());
+//        System.out.printf("%3d%% of %s to '%s' downloaded [%d/%d]\n\n", task.getDownloaded() * 100 / task.getTotal(), 
+//                        task.getSource(), task.getTarget(), task.getDownloaded(), task.getTotal());
 ////    System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progress, downloaded, speed, (1. * (System.currentTimeMillis() - startTime) / 1000));
     }
 

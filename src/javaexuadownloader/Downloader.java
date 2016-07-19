@@ -96,6 +96,24 @@ public class Downloader implements Runnable {
         }
     }
 
+    public void downloadBegin(DownloaderTask task) {
+        for (DownloaderListener listener : listeners) {
+            listener.downloadBegin(task);
+        }
+    }
+
+    public void downloadProgress(DownloaderTask task) {
+        for (DownloaderListener listener : listeners) {
+            listener.downloadProgress(task);
+        }
+    }
+
+    public void downloadComplete(DownloaderTask task) {
+        for (DownloaderListener listener : listeners) {
+            listener.downloadComplete(task);
+        }
+    }
+    
     private void downloadUrl(URL sourceUrl) {
 //        try {
 //            URLConnection conn = sourceUrl.openConnection();
@@ -194,21 +212,4 @@ public class Downloader implements Runnable {
 //        }
     }
 
-    public void downloadBegin(DownloaderTask task) {
-        for (DownloaderListener listener : listeners) {
-            listener.downloadBegin(task);
-        }
-    }
-
-    public void downloadProgress(DownloaderTask task) {
-        for (DownloaderListener listener : listeners) {
-            listener.downloadProgress(task);
-        }
-    }
-
-    public void downloadComplete(DownloaderTask task) {
-        for (DownloaderListener listener : listeners) {
-            listener.downloadComplete(task);
-        }
-    }
 }
