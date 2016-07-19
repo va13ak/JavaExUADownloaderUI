@@ -32,9 +32,10 @@ public class DownloaderTask implements Runnable {
     private long downloaded;
     private long total;
     private long streamReadingTime = 0;
-    private long currentBlockReadingTime = 0;
+    private long currentDataChunkReadingTime = 0;
     private long totalDownloadingTime = 0;
     private int bytesRead;
+    private int totalBytesRead = 0;
     private MessageDigest messageDigest5;
     
 
@@ -61,11 +62,11 @@ public class DownloaderTask implements Runnable {
     }
     
     public long getSpeed() {
-        return downloaded / streamReadingTime;
+        return totalBytesRead / streamReadingTime;
     }
     
     public long getVelocity() {
-        return bytesRead / currentBlockReadingTime;
+        return bytesRead / currentDataChunkReadingTime;
     }
     
     public String getMD5() {
@@ -118,8 +119,9 @@ public class DownloaderTask implements Runnable {
                     synchronized (this) {
                         long startTimeBlockReading = System.currentTimeMillis();
                         bytesRead = bis.read(buffer);
-                        currentBlockReadingTime = System.currentTimeMillis() - startTimeBlockReading;
-                        streamReadingTime += currentBlockReadingTime;
+                        currentDataChunkReadingTime = System.currentTimeMillis() - startTimeBlockReading;
+                        streamReadingTime += currentDataChunkReadingTime;
+                        totalBytesRead += bytesRead;
                     }
                     
                     if (bytesRead < 0) {
@@ -128,6 +130,7 @@ public class DownloaderTask implements Runnable {
 
                     fos.write(buffer, 0, bytesRead);
                     fos.flush();
+                    
                     if (messageDigest5 != null) {
                         messageDigest5.update(buffer, 0, bytesRead);
                     }
