@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package javaexuadownloader;
+package ua.com.codefire.downloader.net;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +38,7 @@ public class Downloader implements Runnable {
     private final URL fileList;
     private final List<URL> files;
     private final File store;
+    private ExecutorService threadPool;
 
     private List<DownloaderListener> listeners;
 
@@ -72,15 +73,14 @@ public class Downloader implements Runnable {
     public void run() {
         retrieveFiles();
 
-        
-        ExecutorService executor = Executors.newFixedThreadPool(5);
+        threadPool = Executors.newFixedThreadPool(5);
         int filesCount = Math.min(files.size(), 10);
         for (int i = 0; i < filesCount; i++) {
             Runnable downloaderTask = new DownloaderTask(this, store, files.get(i));
-            executor.execute(downloaderTask);
+            threadPool.execute(downloaderTask);
         }
-        executor.shutdown();
-        while (!executor.isTerminated()) {};
+        threadPool.shutdown();
+        while (!threadPool.isTerminated()) {};
         System.out.println("Finished all threads...");
         
     }

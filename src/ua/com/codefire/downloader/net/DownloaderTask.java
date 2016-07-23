@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package javaexuadownloader;
+package ua.com.codefire.downloader.net;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -17,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import ua.com.codefire.downloader.Main;
 
 /**
  *
