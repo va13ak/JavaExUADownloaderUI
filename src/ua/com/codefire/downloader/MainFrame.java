@@ -26,6 +26,10 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
     private final Downloader downloader;
     private final File storeFolder;
 
+    private long totalSize;
+    private long currentBytesRead;
+    private int startProgressBarWidth;
+
     /**
      * Creates new form MainFrame
      */
@@ -81,6 +85,7 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
         });
 
         jbDownload.setText("DOWNLOAD");
+        jbDownload.setEnabled(false);
         jbDownload.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jbDownloadActionPerformed(evt);
@@ -191,9 +196,20 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
             downloader.stopDownloading();
 
         } else {
+
+            totalSize = 0;
+            for (DownloaderTask downloaderTask : jlDownloads.getSelectedValuesList()) {
+                totalSize += downloaderTask.getTotal();
+            }
+            currentBytesRead = 0;
+            jpbDownload.setValue(0);
+            startProgressBarWidth = jpbDownload.getWidth();
+            jpbDownload.setMaximum(startProgressBarWidth);
+
             downloader.download(jlDownloads.getSelectedValuesList());
 
             setDownloadEnabled(false);
+
         }
     }//GEN-LAST:event_jbDownloadActionPerformed
 
@@ -254,6 +270,13 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
 
     @Override
     public void downloadProgress(DownloaderTask task) {
+        currentBytesRead += task.getBytesRead();
+        int newProgress = Math.min((int) (currentBytesRead * startProgressBarWidth / totalSize), 
+                    startProgressBarWidth);
+        if (jpbDownload.getValue() != newProgress) {
+            jpbDownload.setValue(newProgress);
+        }
+        
         jlDownloads.repaint();
     }
 
@@ -275,7 +298,16 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
 
     @Override
     public void downloadCompleteCurrentTasks() {
+        jpbDownload.setValue(startProgressBarWidth);
+        
         setDownloadEnabled(true);
+    }
+
+    private void setFetchEnabled(boolean state) {
+        jtfUrlAddress.setEnabled(state);
+        jbDownload.setEnabled(state);
+        jbFetch.setText(state ? "FETCH" : "STOP");
+        jlDownloads.setEnabled(state);
     }
 
     private void setDownloadEnabled(boolean state) {
@@ -284,11 +316,4 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
         jbDownload.setText(state ? "DOWNLOAD" : "STOP");
         jlDownloads.setEnabled(state);
     }
-
-    private void setFetchEnabled(boolean state) {
-        jtfUrlAddress.setEnabled(state);
-        jbDownload.setEnabled(state);
-        jbFetch.setText(state ? "FETCH" : "STOP");
-    }
-
 }

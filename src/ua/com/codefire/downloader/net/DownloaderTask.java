@@ -82,6 +82,10 @@ public class DownloaderTask implements Runnable {
         return bytesRead / currentDataChunkReadingTime;
     }
 
+    public int getBytesRead() {
+        return bytesRead;
+    }
+
     public String getMD5() {
         StringBuilder sb = new StringBuilder();
 
