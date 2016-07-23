@@ -13,7 +13,7 @@ public class DownloadHandler implements DownloaderListener {
 
     @Override
     public void downloadBegin(DownloaderTask task) {
-        System.out.printf("Start downloading %s to '%s'\n\n", task.getSource(), task.getTarget());
+        System.out.printf("Start downloading %s to '%s'\n\n", task.getSourceAddress(), task.getTarget());
     }
 
     @Override
@@ -25,6 +25,21 @@ public class DownloadHandler implements DownloaderListener {
 
     @Override
     public void downloadComplete(DownloaderTask task) {
-        System.out.printf("%s saved to file '%s'\n\n", task.getSource(), task.getTarget());
+        System.out.printf("%s saved to file '%s'\n\n", task.getSourceAddress(), task.getTarget());
+    }
+
+    @Override
+    public void downloadAllFilesPrepared() {
+        //
+    }
+
+    @Override
+    public void downloadPrepared(DownloaderTask task) {
+        System.out.printf("Ready to download %s'\n\n", task.getSourceAddress());
+    }
+
+    @Override
+    public void downloadCompleteCurrentTasks() {
+        System.out.println("ALL DOWNLOADS COMPLETE");
     }
 }

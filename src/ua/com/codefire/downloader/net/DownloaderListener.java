@@ -16,5 +16,11 @@ public interface DownloaderListener {
     public void downloadProgress(DownloaderTask task);
 
     public void downloadComplete(DownloaderTask task);
+    
+    public void downloadPrepared(DownloaderTask task);
+
+    public void downloadAllFilesPrepared();
+    
+    public void downloadCompleteCurrentTasks();
 
 }

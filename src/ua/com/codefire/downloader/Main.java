@@ -21,8 +21,10 @@ import ua.com.codefire.downloader.net.DownloadHandler;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import ua.com.codefire.downloader.net.DownloaderTask;
 
 /**
  * @author CodeFireUA <edu@codefire.com.ua>
@@ -34,10 +36,10 @@ public class Main {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        File store = new File("store");
+        File storeFolder = new File("store");
 
-        if (!store.exists()) {
-            store.mkdir();
+        if (!storeFolder.exists()) {
+            storeFolder.mkdir();
         }
 
         String resource;
@@ -50,10 +52,10 @@ public class Main {
         }
 
         try {
-            Downloader downloader = new Downloader(new URL(resource), store);
+            Downloader downloader = new Downloader(storeFolder);
             downloader.add(new DownloadHandler());
-
-            new Thread(downloader).start();
+            List<DownloaderTask> tasksToDownload = downloader.retrieveFiles(new URL(resource));
+            downloader.download(tasksToDownload.subList(0, Math.min(10, tasksToDownload.size()-1)));
 
         } catch (MalformedURLException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);

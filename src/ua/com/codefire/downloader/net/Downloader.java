@@ -19,7 +19,6 @@ package ua.com.codefire.downloader.net;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,29 +34,30 @@ import java.util.logging.Logger;
  */
 public class Downloader implements Runnable {
 
-    private final URL fileList;
-    private final List<URL> files;
-    private final File store;
+    private final File storeFolder;
     private ExecutorService threadPool;
-
+    private List<DownloaderTask> downloaderTasks;
+    private List<DownloaderTask> tasksToDownload;
     private List<DownloaderListener> listeners;
+    private boolean stopRetrievingFiles;
+    private boolean retrievingFiles;
 
-    public Downloader(URL fileList, File store) {
-        this.fileList = fileList;
-
-        String subFolderName = Paths.get(fileList.getFile().toString()).getFileName().toString().replace(".m3u", "").toString();
+    public Downloader(File store) {
+//        String subFolderName = Paths.get(fileList.getFile().toString()).getFileName().toString().replace(".m3u", "").toString();
+        String subFolderName = "";
         if (!subFolderName.isEmpty()) {
             File subFolder = new File(store, subFolderName);
             if (!subFolder.exists()) {
                 subFolder.mkdir();
             }
-            this.store = subFolder;
+            this.storeFolder = subFolder;
         } else {
-            this.store = store;
+            this.storeFolder = store;
         }
 
-        this.files = new ArrayList<>();
-
+        this.downloaderTasks = new ArrayList<>();
+        this.tasksToDownload = new ArrayList<>();
+        
         this.listeners = Collections.synchronizedList(new ArrayList<DownloaderListener>());
     }
 
@@ -71,29 +71,90 @@ public class Downloader implements Runnable {
 
     @Override
     public void run() {
-        retrieveFiles();
-
         threadPool = Executors.newFixedThreadPool(5);
-        int filesCount = Math.min(files.size(), 10);
-        for (int i = 0; i < filesCount; i++) {
-            Runnable downloaderTask = new DownloaderTask(this, store, files.get(i));
+        for (DownloaderTask downloaderTask : tasksToDownload) {
             threadPool.execute(downloaderTask);
         }
         threadPool.shutdown();
-        while (!threadPool.isTerminated()) {};
-        System.out.println("Finished all threads...");
         
+        while (!threadPool.isTerminated());
+        
+        for (DownloaderListener listener : listeners) {
+            listener.downloadCompleteCurrentTasks();
+        }
     }
 
-    private void retrieveFiles() {
-        try (Scanner scanner = new Scanner(fileList.openStream())) {
+    public List<DownloaderTask> retrieveFiles(URL filesListUrl) {
+        stopRetrievingFiles = false;
+        retrievingFiles = true;
+        
+        try (Scanner scanner = new Scanner(filesListUrl.openStream())) {
             while (scanner.hasNextLine()) {
-                URL fileUrl = new URL(scanner.nextLine());
-                files.add(fileUrl);
+                if (stopRetrievingFiles) {
+                    retrievingFiles = false;
+                    return downloaderTasks;
+                }
+                
+                DownloaderTask downloaderTask = new DownloaderTask(Downloader.this, storeFolder, new URL(scanner.nextLine()));
+                downloaderTask.prepare();
+
+                downloaderTasks.add(downloaderTask);
             }
+            
+            for (DownloaderListener listener : listeners) {
+                listener.downloadAllFilesPrepared();
+            }
+            
         } catch (IOException ex) {
             Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+        retrievingFiles = false;
+        return downloaderTasks;
+    }
+
+    public void startRetrievingFiles(URL filesListUrl) {
+        if (retrievingFiles) {
+            return;
+        }
+        
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                retrieveFiles(filesListUrl);
+            }
+        }).start();
+    }
+    
+    public void stopRetrievingFiles() {
+        if (retrievingFiles) {
+            this.stopRetrievingFiles = true;
+        }
+    }
+
+    public boolean isRetrievingFiles() {
+        return retrievingFiles;
+    }
+
+    public void stopDownloading() {
+        if (threadPool == null) {
+        } else {
+            //System.out.println("trying to stop");
+            threadPool.shutdownNow();
+            //System.out.println("after trying to stop");
+        }
+    }
+    
+    public boolean isDownloading() {
+        if (threadPool == null) {
+            return false;
+        } else {
+            return !threadPool.isTerminated();
+        }
+    }
+    
+    public void stopDownloadingFiles() {
+        
     }
 
     public void downloadBegin(DownloaderTask task) {
@@ -114,102 +175,16 @@ public class Downloader implements Runnable {
         }
     }
     
-    private void downloadUrl(URL sourceUrl) {
-//        try {
-//            URLConnection conn = sourceUrl.openConnection();
-//            conn.getContentType();
-//
-//            URL targetUrl = conn.getURL();
-//
-//            long total = conn.getContentLengthLong();
-//            long downloaded = 0;
-//
-//            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-//
-//            String sourcefile = new File(targetUrl.getFile()).getName();
-//            String filename = new String(sourcefile.getBytes("ISO-8859-1"), "UTF-8");
-//            File targetFile = new File(store, URLDecoder.decode(filename, "UTF-8"));
-//
-////            System.out.printf("--%s--   %s\n", dateFormat.format(new Date()), sourceUrl);
-////            System.out.printf("Length: %d   Saving to: '%s'\n", total, targetFile);
-//
-//            int progressLength = 60;
-//            String progressLine = String.format("%-" + progressLength + "s", "").replace(' ', '=');
-//
-//            MessageDigest md;
-//            try {
-//                md = MessageDigest.getInstance("md5");
-//            } catch (NoSuchAlgorithmException ex) {
-//                Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
-//                md = null;
-//            }
-//
-//            try (BufferedInputStream bis = new BufferedInputStream(targetUrl.openStream());
-//                    FileOutputStream fos = new FileOutputStream(targetFile)) {
-//                byte[] buffer = new byte[bufferSize];
-//
-//                long startTime = System.currentTimeMillis();
-//                long prevTime = startTime;
-//                int speed = 0;
-//                int totalReadTime = 0;
-//                for (int read; (read = bis.read(buffer)) >= 0;) {
-//
-//                    long readTime = System.currentTimeMillis() - prevTime;
-//                    if (readTime > 0) {
-//                        speed = (int) (read / readTime);
-//                        totalReadTime += readTime;
-//                    }
-//
-//                    fos.write(buffer, 0, read);
-//                    fos.flush();
-//                    if (md != null) {
-//                        md.update(buffer, 0, read);
-//                    }
-//
-//                    downloaded += read;
-//
-////                    if (read > 0) {
-////                        int curLength = (int) ((progressLength * downloaded) / total);
-////                        String progress = progressLine.substring(0, curLength) + (curLength < progressLength ? ">" : "");
-////                        //System.out.printf("\r[%-" + progressLength + "s] %6.02f%%", progress, (double) downloaded * 100. / total);
-////                        System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progress, downloaded, speed, (1. * (System.currentTimeMillis() - startTime) / 1000));
-////                    }
-////                    if (downloaded == total) {
-////                        System.out.printf("\r%3d%%[%-" + progressLength + "s] %-9d %6dKb/s in %.01fs", downloaded * 100 / total, progressLine, downloaded, (int) (downloaded / totalReadTime), (1. * (System.currentTimeMillis() - startTime) / 1000));
-////                    }
-//                    prevTime = System.currentTimeMillis();
-//                }
-//
-////                System.out.println();
-//
-//            }
-//
-//            
-//            for (DownloaderListener listener : listeners) {
-//                listener.downloadComplete(sourceUrl, targetFile);
-//            }
-//            
-////            StringBuffer sb = new StringBuffer();
-////            if (md != null) {
-////                byte[] mdbytes = md.digest();
-////
-////                //convert the byte to hex format
-////                for (int i = 0; i < mdbytes.length; i++) {
-////                    sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
-////                }
-////            } else {
-////                sb.append("UNKNOWN");
-////            }
-//
-////            System.out.printf("%s - saved [%d/%d] MD5: %s\n",
-////                    dateFormat.format(new Date()), downloaded, total, sb.toString());
-//            //System.out.println("Downloaded: " + targetFile);
-////            System.out.println();
-//        } catch (MalformedURLException ex) {
-//            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-//        } catch (IOException ex) {
-//            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-//        }
+    public void downloadPrepared(DownloaderTask task) {
+        for (DownloaderListener listener : listeners) {
+            listener.downloadPrepared(task);
+        }
+    }
+
+    public void download(List<DownloaderTask> tasksToDownload) {
+        this.tasksToDownload = tasksToDownload;
+
+        new Thread(this).start();
     }
 
 }
