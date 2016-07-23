@@ -39,7 +39,8 @@ public class DownloaderTask implements Runnable {
     private long totalDownloadingTime = 0;
     private int bytesRead;
     private int totalBytesRead = 0;
-    private MessageDigest messageDigest5;
+    private byte[] md5bytes;
+    private String md5string = "";
     public enum States {NEW, READY, PROGRESS, FINISHED};
     private States state;
 
@@ -86,21 +87,23 @@ public class DownloaderTask implements Runnable {
         return bytesRead;
     }
 
-    public String getMD5() {
+    private void buildMD5String() {
         StringBuilder sb = new StringBuilder();
 
-        if (messageDigest5 != null) {
-            byte[] mdbytes = messageDigest5.digest();
-
+        if (md5bytes != null) {
             //convert the byte to hex format
-            for (int i = 0; i < mdbytes.length; i++) {
-                sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+            for (int i = 0; i < md5bytes.length; i++) {
+                sb.append(Integer.toString((md5bytes[i] & 0xff) + 0x100, 16).substring(1));
             }
         } else {
-            sb.append("UNKNOWN");
+            sb.append("unknown");
         }
 
-        return sb.toString();
+        md5string = sb.toString();
+    }
+    
+    public String getMD5() {
+        return md5string;
     }
 
     @Override
@@ -109,7 +112,7 @@ public class DownloaderTask implements Runnable {
             case PROGRESS:
                 return String.format("%s [%5.2f%%]", targetFile.getName(), (double)downloaded * 100 / total);
             case FINISHED:
-                return String.format("%s [%d bytes] (%s)", targetFile.getName(), total, getMD5());
+                return String.format("%s [%d bytes] / md5: %s", targetFile.getName(), total, this.getMD5());
             default:
                 return String.format("%s [%d bytes]", targetFile.getName(), total);
         }
@@ -155,10 +158,14 @@ public class DownloaderTask implements Runnable {
             state = States.PROGRESS;
             downloader.downloadBegin(this);
 
+            MessageDigest messageDigest5;
             try {
-                messageDigest5 = MessageDigest.getInstance("md5");
+                messageDigest5 = (MessageDigest)MessageDigest.getInstance("md5").clone();
             } catch (NoSuchAlgorithmException ex) {
                 Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
+                messageDigest5 = null;
+            } catch (CloneNotSupportedException ex) {
+                Logger.getLogger(DownloaderTask.class.getName()).log(Level.SEVERE, null, ex);
                 messageDigest5 = null;
             }
 
@@ -166,6 +173,8 @@ public class DownloaderTask implements Runnable {
                     FileOutputStream fos = new FileOutputStream(targetFile)) {
 
                 byte[] buffer = new byte[bufferSize];
+                md5bytes = null;
+                md5string = "";
 
                 while (true) {
 
@@ -196,6 +205,9 @@ public class DownloaderTask implements Runnable {
                 }
             }
 
+            md5bytes = messageDigest5.digest();
+            buildMD5String();
+            
             state = States.FINISHED;
             downloader.downloadComplete(this);
 
