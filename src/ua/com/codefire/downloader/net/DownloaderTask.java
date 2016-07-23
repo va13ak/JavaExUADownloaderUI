@@ -45,6 +45,7 @@ public class DownloaderTask implements Runnable {
     public enum States {
         NEW, READY, PROGRESS, FINISHED
     };
+    
     private States state;
 
     public DownloaderTask(Downloader downloader, File store, URL source) {
