@@ -39,8 +39,12 @@ public class DownloaderTask implements Runnable {
     private long totalDownloadingTime = 0;
     private int bytesRead;
     private int totalBytesRead = 0;
-    private MessageDigest messageDigest5;
-    public enum States {NEW, READY, PROGRESS, FINISHED};
+    private byte[] md5Bytes;
+    private String md5String;
+
+    public enum States {
+        NEW, READY, PROGRESS, FINISHED
+    };
     private States state;
 
     public DownloaderTask(Downloader downloader, File store, URL source) {
@@ -86,32 +90,34 @@ public class DownloaderTask implements Runnable {
         return bytesRead;
     }
 
-    public String getMD5() {
+    private void buildMD5String() {
         StringBuilder sb = new StringBuilder();
 
-        if (messageDigest5 != null) {
-            byte[] mdbytes = messageDigest5.digest();
-
+        if (md5Bytes != null) {
             //convert the byte to hex format
-            for (int i = 0; i < mdbytes.length; i++) {
-                sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+            for (int i = 0; i < md5Bytes.length; i++) {
+                sb.append(Integer.toString((md5Bytes[i] & 0xff) + 0x100, 16).substring(1));
             }
         } else {
-            sb.append("UNKNOWN");
+            sb.append("unknown");
         }
 
-        return sb.toString();
+        md5String = sb.toString();
+    }
+
+    public String getMD5() {
+        return md5String;
     }
 
     @Override
     public String toString() {
         switch (state) {
             case PROGRESS:
-                return String.format("%s [%5.2f%%]", targetFile.getName(), (double)downloaded * 100 / total);
+                return String.format("%s   [%5.2f%%]   %6d kB/s", targetFile.getName(), (double) downloaded * 100 / total, getSpeed());
             case FINISHED:
-                return String.format("%s [%d bytes] (%s)", targetFile.getName(), total, getMD5());
+                return String.format("%s   [%d bytes]   %s", targetFile.getName(), total, md5String);
             default:
-                return String.format("%s [%d bytes]", targetFile.getName(), total);
+                return String.format("%s   [%d bytes]", targetFile.getName(), total);
         }
     }
 
@@ -119,7 +125,7 @@ public class DownloaderTask implements Runnable {
         if (state != States.NEW) {
             return true;
         }
-        
+
         try {
             urlConnection = sourceUrl.openConnection();
             urlConnection.getContentType();
@@ -130,31 +136,32 @@ public class DownloaderTask implements Runnable {
 
             sourceAddress = URLDecoder.decode(new String(sourceUrl.toString().getBytes("ISO-8859-1"), "UTF-8"), "UTF-8");
             String sourceFileName = URLDecoder.decode(new String(sourceUrl.getFile().getBytes("ISO-8859-1"), "UTF-8"), "UTF-8");
-            
+
             targetFile = new File(storeFolder, new File(sourceFileName).getName());
-            
+
             state = States.READY;
             downloader.downloadPrepared(this);
-            
+
             return true;
-            
+
         } catch (IOException ex) {
             Logger.getLogger(DownloaderTask.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         return false;
-}
+    }
 
     @Override
     public void run() {
         if (state != States.READY) {
             return;
         }
-        
+
         try {
             state = States.PROGRESS;
             downloader.downloadBegin(this);
 
+            MessageDigest messageDigest5;
             try {
                 messageDigest5 = MessageDigest.getInstance("md5");
             } catch (NoSuchAlgorithmException ex) {
@@ -166,6 +173,8 @@ public class DownloaderTask implements Runnable {
                     FileOutputStream fos = new FileOutputStream(targetFile)) {
 
                 byte[] buffer = new byte[bufferSize];
+                md5Bytes = null;
+                md5String = "";
 
                 while (true) {
 
@@ -196,13 +205,18 @@ public class DownloaderTask implements Runnable {
                 }
             }
 
+            if (messageDigest5 != null) {
+                md5Bytes = messageDigest5.digest();
+                buildMD5String();
+            }
+
             state = States.FINISHED;
             downloader.downloadComplete(this);
 
         } catch (MalformedURLException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             state = States.READY;
-            
+
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             state = States.READY;
