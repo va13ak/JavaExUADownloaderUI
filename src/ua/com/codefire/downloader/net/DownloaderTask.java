@@ -45,6 +45,7 @@ public class DownloaderTask implements Runnable {
     public enum States {
         NEW, READY, PROGRESS, FINISHED
     };
+    
     private States state;
 
     public DownloaderTask(Downloader downloader, File store, URL source) {
@@ -163,9 +164,12 @@ public class DownloaderTask implements Runnable {
 
             MessageDigest messageDigest5;
             try {
-                messageDigest5 = MessageDigest.getInstance("md5");
+                messageDigest5 = (MessageDigest)MessageDigest.getInstance("md5").clone();
             } catch (NoSuchAlgorithmException ex) {
                 Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
+                messageDigest5 = null;
+            } catch (CloneNotSupportedException ex) {
+                Logger.getLogger(DownloaderTask.class.getName()).log(Level.SEVERE, null, ex);
                 messageDigest5 = null;
             }
 
