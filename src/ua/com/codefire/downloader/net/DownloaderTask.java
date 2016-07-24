@@ -80,11 +80,11 @@ public class DownloaderTask implements Runnable {
     }
 
     public long getSpeed() {
-        return totalBytesRead / streamReadingTime;
+        return streamReadingTime == 0 ? 0 : totalBytesRead / streamReadingTime;
     }
 
     public long getVelocity() {
-        return bytesRead / currentDataChunkReadingTime;
+        return currentDataChunkReadingTime == 0 ? 0 : bytesRead / currentDataChunkReadingTime;
     }
 
     public int getBytesRead() {

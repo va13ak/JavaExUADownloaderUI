@@ -5,7 +5,9 @@
  */
 package ua.com.codefire.downloader;
 
+import java.awt.Desktop;
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.logging.Level;
@@ -118,6 +120,11 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
         jInternalFrame2.setPreferredSize(new java.awt.Dimension(494, 150));
         jInternalFrame2.setVisible(true);
 
+        jlDownloaded.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jlDownloadedMouseClicked(evt);
+            }
+        });
         jScrollPane3.setViewportView(jlDownloaded);
 
         javax.swing.GroupLayout jInternalFrame2Layout = new javax.swing.GroupLayout(jInternalFrame2.getContentPane());
@@ -213,6 +220,31 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
         }
     }//GEN-LAST:event_jbDownloadActionPerformed
 
+    private void jlDownloadedMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jlDownloadedMouseClicked
+        if (evt.getClickCount() == 2) {
+            int downloadedListIndex = jlDownloaded.locationToIndex(evt.getPoint());
+            //System.out.println(downloadedListIndex);
+
+            DownloaderTask downloaderTask = dlmDownloaded.get(downloadedListIndex);
+            //System.out.println(downloaderTask);
+            //System.out.println(downloaderTask.getTarget());
+
+            Desktop desktop = null;
+            if (Desktop.isDesktopSupported()) {
+                desktop = Desktop.getDesktop();
+                try {
+                    //System.out.println("preopened: " + downloaderTask.getTarget());
+                    //desktop.open(downloaderTask.getTarget());
+                    desktop.open(downloaderTask.getTarget().getParentFile());
+                    //System.out.println("opened: " + downloaderTask.getTarget());
+                } catch (IOException ex) {
+                    Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+
+        }
+    }//GEN-LAST:event_jlDownloadedMouseClicked
+
     /**
      * @param args the command line arguments
      */
@@ -271,12 +303,12 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
     @Override
     public void downloadProgress(DownloaderTask task) {
         currentBytesRead += task.getBytesRead();
-        int newProgress = Math.min((int) (currentBytesRead * startProgressBarWidth / totalSize), 
-                    startProgressBarWidth);
+        int newProgress = Math.min((int) (currentBytesRead * startProgressBarWidth / totalSize),
+                startProgressBarWidth);
         if (jpbDownload.getValue() != newProgress) {
             jpbDownload.setValue(newProgress);
         }
-        
+
         jlDownloads.repaint();
     }
 
@@ -299,7 +331,7 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
     @Override
     public void downloadCompleteCurrentTasks() {
         jpbDownload.setValue(startProgressBarWidth);
-        
+
         setDownloadEnabled(true);
     }
 

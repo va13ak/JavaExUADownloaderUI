@@ -19,6 +19,7 @@ package ua.com.codefire.downloader.net;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +35,7 @@ import java.util.logging.Logger;
  */
 public class Downloader implements Runnable {
 
-    private final File storeFolder;
+    private File storeFolder;
     private ExecutorService threadPool;
     private List<DownloaderTask> downloaderTasks;
     private List<DownloaderTask> tasksToDownload;
@@ -42,22 +43,10 @@ public class Downloader implements Runnable {
     private boolean stopRetrievingFiles;
     private boolean retrievingFiles;
 
-    public Downloader(File store) {
-//        String subFolderName = Paths.get(fileList.getFile().toString()).getFileName().toString().replace(".m3u", "").toString();
-        String subFolderName = "";
-        if (!subFolderName.isEmpty()) {
-            File subFolder = new File(store, subFolderName);
-            if (!subFolder.exists()) {
-                subFolder.mkdir();
-            }
-            this.storeFolder = subFolder;
-        } else {
-            this.storeFolder = store;
-        }
-
+    public Downloader(File storeFolder) {
         this.downloaderTasks = new ArrayList<>();
         this.tasksToDownload = new ArrayList<>();
-        
+        this.storeFolder = storeFolder;
         this.listeners = Collections.synchronizedList(new ArrayList<DownloaderListener>());
     }
 
@@ -85,6 +74,15 @@ public class Downloader implements Runnable {
     }
 
     public List<DownloaderTask> retrieveFiles(URL filesListUrl) {
+        String subFolderName = Paths.get(filesListUrl.getFile().toString()).getFileName().toString().replace(".m3u", "").toString();
+        if (!subFolderName.isEmpty()) {
+            File subFolder = new File(storeFolder, subFolderName);
+            if (!subFolder.exists()) {
+                subFolder.mkdir();
+            }
+            this.storeFolder = subFolder;
+        }
+
         stopRetrievingFiles = false;
         retrievingFiles = true;
         
