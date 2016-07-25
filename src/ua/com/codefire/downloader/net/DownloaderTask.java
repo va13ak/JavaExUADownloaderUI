@@ -41,11 +41,12 @@ public class DownloaderTask implements Runnable {
     private int totalBytesRead = 0;
     private byte[] md5Bytes;
     private String md5String;
+    private boolean terminateDownload = false;
 
-    public enum States {
+    public static enum States {
         NEW, READY, PROGRESS, FINISHED
     };
-    
+
     private States state;
 
     public DownloaderTask(Downloader downloader, File store, URL source) {
@@ -122,6 +123,14 @@ public class DownloaderTask implements Runnable {
         }
     }
 
+    public synchronized boolean terminate() {
+        if (state == States.PROGRESS) {
+            terminateDownload = true;
+            return true;
+        }
+        return false;
+    }
+
     public boolean prepare() {
         if (state != States.NEW) {
             return true;
@@ -159,8 +168,10 @@ public class DownloaderTask implements Runnable {
         }
 
         try {
-            state = States.PROGRESS;
-            downloader.downloadBegin(this);
+            synchronized (this) {
+                state = States.PROGRESS;
+                downloader.downloadBegin(this);
+            }
 
             MessageDigest messageDigest5;
             try {
@@ -178,6 +189,17 @@ public class DownloaderTask implements Runnable {
                 md5String = "";
 
                 while (true) {
+
+                    synchronized (this) {
+                        if (terminateDownload) {
+                            bis.close();
+                            fos.close();
+                            targetFile.delete();
+                            terminateDownload = false;
+                            state = States.READY;
+                            return;
+                        }
+                    }
 
                     synchronized (this) {
                         long startTimeBlockReading = System.currentTimeMillis();

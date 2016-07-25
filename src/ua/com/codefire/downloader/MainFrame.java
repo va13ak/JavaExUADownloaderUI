@@ -200,7 +200,13 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
 
     private void jbDownloadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbDownloadActionPerformed
         if (downloader.isDownloading()) {
-            downloader.stopDownloading();
+            if (jbDownload.getText().toString().equals("TERMINATE")) {
+                downloader.terminateDownloading();
+                
+            } else {
+                downloader.stopDownloading();
+                jbDownload.setText("TERMINATE");
+            }
 
         } else {
 
@@ -314,8 +320,10 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
 
     @Override
     public void downloadComplete(DownloaderTask task) {
-        dlmDownloaded.addElement(task);
-        dlmDownloads.removeElement(task);
+        synchronized (this) {
+            dlmDownloaded.addElement(task);
+            dlmDownloads.removeElement(task);
+        }
     }
 
     @Override
@@ -330,9 +338,10 @@ public class MainFrame extends javax.swing.JFrame implements DownloaderListener 
 
     @Override
     public void downloadCompleteCurrentTasks() {
-        jpbDownload.setValue(startProgressBarWidth);
-
+        //jlDownloads.repaint();
+        //jlDownloaded.repaint();
         setDownloadEnabled(true);
+        //jpbDownload.setValue(startProgressBarWidth);
     }
 
     private void setFetchEnabled(boolean state) {

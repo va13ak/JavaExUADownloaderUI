@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  */
 public class Downloader implements Runnable {
 
-    private File storeFolder;
+    private final File storeFolder;
     private ExecutorService threadPool;
     private List<DownloaderTask> downloaderTasks;
     private List<DownloaderTask> tasksToDownload;
@@ -65,9 +65,9 @@ public class Downloader implements Runnable {
             threadPool.execute(downloaderTask);
         }
         threadPool.shutdown();
-        
+
         while (!threadPool.isTerminated());
-        
+
         for (DownloaderListener listener : listeners) {
             listener.downloadCompleteCurrentTasks();
         }
@@ -75,38 +75,38 @@ public class Downloader implements Runnable {
 
     public List<DownloaderTask> retrieveFiles(URL filesListUrl) {
         String subFolderName = Paths.get(filesListUrl.getFile().toString()).getFileName().toString().replace(".m3u", "").toString();
+        File subFolder = storeFolder;
         if (!subFolderName.isEmpty()) {
-            File subFolder = new File(storeFolder, subFolderName);
+            subFolder = new File(storeFolder, subFolderName);
             if (!subFolder.exists()) {
                 subFolder.mkdir();
             }
-            this.storeFolder = subFolder;
         }
 
         stopRetrievingFiles = false;
         retrievingFiles = true;
-        
+
         try (Scanner scanner = new Scanner(filesListUrl.openStream())) {
             while (scanner.hasNextLine()) {
                 if (stopRetrievingFiles) {
                     retrievingFiles = false;
                     return downloaderTasks;
                 }
-                
-                DownloaderTask downloaderTask = new DownloaderTask(Downloader.this, storeFolder, new URL(scanner.nextLine()));
+
+                DownloaderTask downloaderTask = new DownloaderTask(Downloader.this, subFolder, new URL(scanner.nextLine()));
                 downloaderTask.prepare();
 
                 downloaderTasks.add(downloaderTask);
             }
-            
+
             for (DownloaderListener listener : listeners) {
                 listener.downloadAllFilesPrepared();
             }
-            
+
         } catch (IOException ex) {
             Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         retrievingFiles = false;
         return downloaderTasks;
     }
@@ -115,7 +115,7 @@ public class Downloader implements Runnable {
         if (retrievingFiles) {
             return;
         }
-        
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -123,7 +123,7 @@ public class Downloader implements Runnable {
             }
         }).start();
     }
-    
+
     public void stopRetrievingFiles() {
         if (retrievingFiles) {
             this.stopRetrievingFiles = true;
@@ -142,7 +142,13 @@ public class Downloader implements Runnable {
             //System.out.println("after trying to stop");
         }
     }
-    
+
+    public void terminateDownloading() {
+        for (DownloaderTask downloaderTask : tasksToDownload) {
+            downloaderTask.terminate();
+        }
+    }
+
     public boolean isDownloading() {
         if (threadPool == null) {
             return false;
@@ -150,9 +156,9 @@ public class Downloader implements Runnable {
             return !threadPool.isTerminated();
         }
     }
-    
+
     public void stopDownloadingFiles() {
-        
+
     }
 
     public void downloadBegin(DownloaderTask task) {
@@ -172,7 +178,7 @@ public class Downloader implements Runnable {
             listener.downloadComplete(task);
         }
     }
-    
+
     public void downloadPrepared(DownloaderTask task) {
         for (DownloaderListener listener : listeners) {
             listener.downloadPrepared(task);
